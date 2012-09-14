@@ -8,6 +8,7 @@ import org.lwjgl.input.Keyboard;
 import org.lwjgl.util.vector.Vector3f;
 
 import java.util.*;
+import org.lwjgl.util.glu.GLU;
 
 public class MyDisplay {
 	/**
@@ -25,7 +26,7 @@ public class MyDisplay {
     /**
      * the rotation around the Y axis of the camera
      */
-    private float CameraYyaw_f = 0.0f;
+    private float CameraYaw_f = 0.0f;
     /**
      * the rotation around the X axis of the camera
      */
@@ -38,6 +39,15 @@ public class MyDisplay {
      * Step Size of rotating Objects
      */
     private float rotationStepSize_f = 0.1f;
+    
+    private int targetWidth_i = 800;
+
+    private int targetHeight_i = 600;
+    
+    private float xrot=0.1f;
+    private float yrot=0.1f;
+    private float zrot=0.1f;
+    
 	
 	/**
 	 * Current Rotation angle of the Quad
@@ -57,6 +67,7 @@ public class MyDisplay {
 	
 	public MyDisplay(){
 		lastTime_l = Sys.getTime();
+		this.position_V3f = new Vector3f(0f, 0f, 20f);
 	}
 	
 	public static void main(String[] argv) {
@@ -88,26 +99,20 @@ public class MyDisplay {
 		}
 	}
 	private void initializeOpenGL(){
-        GL11.glEnable(GL11.GL_DEPTH_TEST);
-        GL11.glDepthFunc(GL11.GL_LEQUAL);
-        GL11.glEnable(GL11.GL_CULL_FACE);
- 
-        GL11.glMatrixMode(GL11.GL_PROJECTION);
-        GL11.glLoadIdentity();
- 
-        final double fov = 45.0;
-        final double zNear = 0.01;
-        final double zFar = 100;
-        final double aspect = (double) Display.getDisplayMode().getWidth() / (double) Display.getDisplayMode().getHeight();
-        final double yPlane = Math.tan(Math.toRadians(fov / 2.0)) * zNear;
-        final double xPlane = yPlane * aspect;
- 
-        GL11.glMatrixMode(GL11.GL_PROJECTION);
-        GL11.glLoadIdentity();
-        GL11.glFrustum(-xPlane, +xPlane, -yPlane, +yPlane, zNear, zFar);
- 
-        GL11.glMatrixMode(GL11.GL_MODELVIEW);
-        GL11.glLoadIdentity();
+		GL11.glMatrixMode(GL11.GL_PROJECTION);
+		GL11.glLoadIdentity();
+		//Calculate the aspect ratio of the window
+		GLU.gluPerspective(45.0f,((float)targetWidth_i)/((float)targetHeight_i),0.1f,100.0f);
+		GL11.glMatrixMode(GL11.GL_MODELVIEW);
+		GL11.glLoadIdentity();
+		GL11.glEnable(GL11.GL_TEXTURE_2D);    
+		// Enable Texture Mapping ( NEW )
+		GL11.glShadeModel(GL11.GL_SMOOTH);
+		GL11.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+		GL11.glClearDepth(1.0f);
+		GL11.glEnable(GL11.GL_DEPTH_TEST);
+		GL11.glDepthFunc(GL11.GL_LEQUAL);
+		GL11.glHint(GL11.GL_PERSPECTIVE_CORRECTION_HINT, GL11.GL_NICEST);
 	}
 	private void drawQuad(){
         GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
@@ -290,4 +295,241 @@ public class MyDisplay {
 	   	Display.sync(60);
 	    Display.update();
 	}
+
+
+	public void modifyCameraYaw(float amount_f){
+		this.CameraYaw_f += amount_f;
+	
+	}
+	public void modifyCameraPitch(float amount_f){
+		this.CameraPitch_f += amount_f;
+	}
+	public void walkForward(float distance_f){
+		this.position_V3f.x -= distance_f * (float)Math.sin(Math.toRadians(this.CameraYaw_f));
+		this.position_V3f.z += distance_f * (float)Math.cos(Math.toRadians(this.CameraYaw_f));
+	}
+	public void walkBackward(float distance_f){
+		this.position_V3f.x += distance_f * (float)Math.sin(Math.toRadians(this.CameraYaw_f));
+		this.position_V3f.z -= distance_f * (float)Math.cos(Math.toRadians(this.CameraYaw_f));
+	}
+	public void strafeLeft(float distance_f){
+		this.position_V3f.x -= distance_f * (float)Math.sin(Math.toRadians(this.CameraYaw_f));
+		this.position_V3f.z += distance_f * (float)Math.cos(Math.toRadians(this.CameraYaw_f));
+	}
+	public void strafeRight(float distance_f){
+		this.position_V3f.x -= distance_f * (float)Math.sin(Math.toRadians(this.CameraYaw_f));
+		this.position_V3f.z += distance_f * (float)Math.cos(Math.toRadians(this.CameraYaw_f));
+	}
+	
+	public void lookThrough(){
+		GL11.glRotatef(this.CameraPitch_f, 1.0f, 0.0f, 0.0f);
+		GL11.glRotatef(this.CameraYaw_f, 0.0f, 1.0f, 0.0f);
+		GL11.glTranslatef(position_V3f.x, position_V3f.y, position_V3f.z);
+	}
+		
+	public void initDisplay(boolean fullscreen_b){
+		DisplayMode chosenMode_dM = null;
+		
+		try{
+				DisplayMode[] modes = Display.getAvailableDisplayModes();
+				
+				for(int i=0; i<modes.length;i++){
+					if((modes[i].getWidth() == this.targetWidth_i)&&(modes[i].getHeight() == this.targetHeight_i)){
+						chosenMode_dM = modes[i];
+						break;
+					}
+				}
+		} catch (LWJGLException e){
+			Sys.alert("Error", "Unable to determine display modes.");
+			System.exit(0);
+			
+		}
+		if (chosenMode_dM == null){
+			Sys.alert("Error", "unable to find appropriate display mode.");
+			System.exit(0);
+		}
+		
+		try{
+			Display.setDisplayMode(chosenMode_dM);
+			Display.setFullscreen(fullscreen_b);
+			Display.setTitle("My Secret Title");
+			Display.create();
+		}
+		catch (LWJGLException e){
+			Sys.alert("Error", "Unable to create display.");
+			System.exit(0);
+		}
+		
+	}
+
+	  private void run(){
+	      BasicFPS camera = new BasicFPS(0, 0, 0);
+	            float dx        = 0.0f;
+	            float dy        = 0.0f;
+	            float dt        = 0.0f; //length of frame
+	            float lastTime  = 0.0f; // when the last frame was
+	            float time      = 0.0f;
+	            float mouseSensitivity = 0.15f;
+	            float movementSpeed = 10.0f; //move 10 units per second
+	            //hide the mouse
+	            Mouse.setGrabbed(true);
+	        while(gameRunning_b){
+	            update();
+	            render();
+	            Display.update();
+
+	 
+
+	             //keep looping till the display window is closed the ESC key is down
+
+	            /*
+
+	            while (!Display.isCloseRequested() ||
+
+	             !Keyboard.isKeyDown(Keyboard.KEY_ESCAPE))
+
+	                {
+
+	                */
+
+	                time = Sys.getTime();
+
+	                
+
+	                //here is your movement speed, which can be changed to anything
+
+	                dt = 0.0005f;
+
+	                
+
+	                lastTime = time;
+
+	 
+
+	 
+
+	                //distance in mouse movement from the last getDX() call.
+
+	                dx = Mouse.getDX();
+
+	                //distance in mouse movement from the last getDY() call.
+
+	                dy = Mouse.getDY();
+
+	 
+
+	                //control camera yaw from x movement from the mouse
+
+	                camera.yaw(dx * mouseSensitivity);
+
+	                //control camera pitch from y movement from the mouse
+
+	                camera.pitch(-dy * mouseSensitivity);
+
+	 
+
+	 
+
+	                //when passing in the distrance to move
+
+	                //we times the movementSpeed with dt this is a time scale
+
+	                //so if its a slow frame u move more then a fast frame
+
+	                //so on a slow computer you move just as fast as on a fast computer
+
+	                
+
+	                //OVER HERE! What do I do to make the boolean canWalk actually work the right way?
+
+	                
+
+	                if (Keyboard.isKeyDown(Keyboard.KEY_W))//move forward
+
+	                {
+
+	                    camera.walkForward(movementSpeed*dt);
+
+	                }
+
+	                if (Keyboard.isKeyDown(Keyboard.KEY_S))//move backwards
+
+	                {
+
+	                    camera.walkBackwards(movementSpeed*dt);
+
+	                }
+
+	                if (Keyboard.isKeyDown(Keyboard.KEY_A))//strafe left
+
+	                {
+
+	                    camera.strafeLeft(movementSpeed*dt);
+
+	                }
+
+	                if (Keyboard.isKeyDown(Keyboard.KEY_D))//strafe right
+
+	                {
+
+	                    camera.strafeRight(movementSpeed*dt);
+
+	                }
+
+	 
+
+	                //set the modelview matrix back to the identity
+
+	                GL11.glLoadIdentity();
+
+	                //look through the camera before you draw anything
+
+	                camera.lookThrough();
+
+	                //you would draw your scene here.
+
+	 
+
+	                //draw the buffer to the screen
+
+	                //Display.update();
+
+	            //}
+
+	 
+
+	            // finally check if the user has requested that the display be
+
+	            // shutdown
+
+	            if (Display.isCloseRequested()) {
+
+	                    gameRunning = false;
+
+	                    Display.destroy();
+
+	                    System.exit(0);
+
+	                }
+
+	            if (Keyboard.isKeyDown(Keyboard.KEY_ESCAPE))
+
+	            {
+
+	                Sys.alert("Close","To continue, press ESCAPE on your keyboard or OK on the screen.");
+
+	                System.exit(0);
+
+	                
+
+	            }
+
+	        }
+
+	    }
+
+//Class End
 }
+
+
+
